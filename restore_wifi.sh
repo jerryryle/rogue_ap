@@ -11,7 +11,7 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 echo "Enter WiFi SSID:"
 read SSID
 
-echo "Enter WiFi PSK:"
+echo "Enter WiFi Password:"
 read PSK
 
 echo -n "Copying config files..."

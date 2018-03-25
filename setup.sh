@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+#TODO: Prompt for the network name and insert it in the hostapd config file.
+
 PREREQUISITES="apache2 bridge-utils dnsmasq git hostapd iptables-persistent libapache2-mod-wsgi macchanger python-pip python-flask"
 
 if [ "$(id -u)" != "0" ]; then
@@ -66,31 +68,23 @@ a2dissite 000-default
 a2ensite 000-rogueap
 echo "done!"
 
-echo -n "Disable DHCP..."
+echo -n "Disabling DHCP..."
 update-rc.d dhcpcd disable
 echo "done!"
 
-echo -n "Enable dnsmasq..."
+echo -n "Enabling dnsmasq..."
 systemctl enable dnsmasq
 echo "done!"
 
-echo -n "Enable hostapd..."
+echo -n "Enabling hostapd..."
 systemctl enable hostapd
 echo "done!"
 
+echo -n "Disabling WPA Supplicant..."
+cat > /etc/wpa_supplicant/wpa_supplicant.conf <<EOF
+ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+update_config=1
+EOF
+echo "done!"
+
 echo "All done! Reboot to apply changes."
-
-# echo "Configuring..."
-# cp -f cfg/hostapd.conf /etc/hostapd/
-# cp -f cfg/hostapd /etc/default/
-# cp -f cfg/macchanger /etc/default/
-# cp -f cfg/dnsmasq.conf /etc/
-
-# cp -f cfg/.htaccess /var/www/html/
-# chown -R www-data:www-data /var/www/html
-# chown root:www-data /var/www/html/.htaccess
-# cp -f override.conf /etc/apache2/conf-available/
-# ln -s /etc/apache2/conf-available/override.conf /etc/apache2/conf-enabled/override.conf
-# ln -s /etc/apache2/mods-available/rewrite.load /etc/apache2/mods-enabled/rewrite.load
-
-# cp -f rc.local /etc/
