@@ -16,6 +16,7 @@ read PSK
 
 echo -n "Copying config files..."
 cp -f ${SCRIPT_DIR}/cfg/interfaces.wifi /etc/network/interfaces
+cp -f ${SCRIPT_DIR}/cfg/rules.v4.wifi /etc/iptables/rules.v4
 echo "done!"
 
 echo -n "Modifying config files..."
