@@ -12,7 +12,7 @@ So, I've borrowed heavily from Braindead's tutorial, but I've updated it to achi
 
 ## TL;DR
 
-On a fresh install of Raspbian Stretch Lite, clone https://github.com/jerryryle/rogue_ap and run setup.sh, then reboot. The Pi needs only a power supply and a wireless adapter on wlan0; internet connection is not required.
+On a fresh install of Raspbian Stretch Lite, clone [https://github.com/jerryryle/rogue_ap](https://github.com/jerryryle/rogue_ap) and run setup.sh, then reboot. The Pi needs only a power supply and a wireless adapter on wlan0; internet connection is not required.
 
 ## Components
 
@@ -29,9 +29,9 @@ You will need the following:
 
 ## Preparation
 
-First, you need to get the Raspberry Pi up and running. Download the latest image of Raspbian Stretch Lite from https://www.raspberrypi.org/downloads/raspbian/
+First, you need to get the Raspberry Pi up and running. Download the latest image of Raspbian Stretch Lite from [https://www.raspberrypi.org/downloads/raspbian/](https://www.raspberrypi.org/downloads/raspbian/)
 
-For writing the image to your SD card, Braindead recommends simplifying the process by using Etcher from https://etcher.io.
+For writing the image to your SD card, Braindead recommends simplifying the process by using Etcher from [https://etcher.io](https://etcher.io).
 
 Insert the SD card in your computer and use Etcher to copy the Raspbian image to the SD card (it will overwrite any data currently on the card).
 
