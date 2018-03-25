@@ -1,2 +1,2 @@
-# raspberry_pi_ap
-Configuration for creating a rogue AP using the Raspberry Pi
+# rogue_ap
+Configuration for creating a Rogue AP using the Raspberry Pi

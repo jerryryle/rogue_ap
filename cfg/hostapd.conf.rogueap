@@ -1,0 +1,7 @@
+interface=wlan0
+bridge=br0
+ssid=<Your SSID Here>
+hw_mode=g
+channel=6
+wmm_enabled=0
+auth_algs=1
