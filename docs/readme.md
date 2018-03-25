@@ -10,11 +10,11 @@ It was almost exactly what I wanted, except for a few things:
 
 So, I've borrowed heavily from Braindead's tutorial, but I've updated it to achieve my goals.
 
-##TL;DR
+## TL;DR
 
 On a fresh install of Raspbian Stretch Lite, clone https://github.com/jerryryle/rogue_ap and run setup.sh, then reboot. The Pi needs only a power supply and a wireless adapter on wlan0; internet connection is not required.
 
-##Components
+## Components
 
 You will need the following:
 
@@ -27,7 +27,7 @@ You will need the following:
 * Computer with SD card reader to download Raspbian and install it onto the SD card
 * Computer or phone with WiFi to test the Rogue AP
 
-##Preparation
+## Preparation
 
 First, you need to get the Raspberry Pi up and running. Download the latest image of Raspbian Stretch Lite from https://www.raspberrypi.org/downloads/raspbian/
 
@@ -88,8 +88,8 @@ When the installation finishes, restart the Raspberry Pi:
 sudo reboot
 ```
 
-##Configuring your Rogue AP
-###The Quick Way
+## Configuring your Rogue AP
+### The Quick Way
 To configure the system to run the rogue access point, all you need to do is download a repository from GitHub and run the installer. To do this, use these commands (you will be prompted for the name of the WiFi network that your Rogue AP will create):
 ```bash
 git clone https://github.com/jerryryle/rogue_ap.git
@@ -107,5 +107,5 @@ sudo ./restore_wifi.sh
 sudo reboot
 ```
 
-###The Manual Way
+### The Manual Way
 Coming soon.
