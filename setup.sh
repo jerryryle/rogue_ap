@@ -58,6 +58,14 @@ a2enconf override
 a2enmod rewrite
 echo "done!"
 
+echo -n "Configuring Web App..."
+mkdir -p /var/www/rogueap
+copy_with_backup ${SCRIPT_DIR}/cfg/rogueap.wsgi.rogueap /var/www/rogueap/rogueap.wsgi
+copy_with_backup ${SCRIPT_DIR}/cfg/000-rogueap.conf.rogueap /etc/apache2/sites-available/000-rogueap.conf
+a2dissite 000-default
+a2ensite 000-rogueap
+echo "done!"
+
 echo -n "Disable DHCP..."
 update-rc.d dhcpcd disable
 echo "done!"

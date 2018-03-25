@@ -1,0 +1,1 @@
+from rogueap import app as application
