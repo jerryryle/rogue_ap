@@ -27,7 +27,7 @@
         # after it has been globally disabled with "a2disconf".
         #Include conf-available/serve-cgi-bin.conf
 
-        WSGIDaemonProcess rogueap user=user1 group=group1 threads=5
+        WSGIDaemonProcess rogueap threads=5
         WSGIScriptAlias / /var/www/rogueap/rogueap.wsgi
         <Directory /var/www/rogueap>
                 WSGIProcessGroup rogueap
