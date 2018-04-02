@@ -109,7 +109,7 @@ sudo reboot
 
 ### The Manual Way
 
-#### Configuring the Web Server to Run an App
+#### Configure the Web Server to Run an App
 First, you'll want to install your web application and get it running under Apache. The github repo associated with this project contains a skeleton Flask-based app that's intended to run under Apache. You can clone the repo and use it or build your own app. If you want to use a different framework, language, or web server, the configuration is up to you and you can skip over this section.
 
 To install a Flask-based app, switch to the app's folder ("rogueap" in the github repo) and run this command:
@@ -121,9 +121,14 @@ The `--upgrade --no-deps --force-reinstall` flags ensure that the app is upgrade
 
 To configure Apache to run the installed Flask app, follow these instructions: [http://flask.pocoo.org/docs/0.12/deploying/mod_wsgi/](http://flask.pocoo.org/docs/0.12/deploying/mod_wsgi/). In a nutshell, you need to create a `.wsgi` file that imports your installed app and change your Apache site's `VirtualHost` configuration to run it. The linked instructions should walk you through all of this, but you can also inspect the files in this project's github repo to see how I configured it.
 
-#### Configuring the Web Server to Fool Captive Portal Detection
+#### Configure the Web Server to Fool Captive Portal Detection
 
-First, we need to add a directory rule to allow `.htaccess` overrides within the `/var/www` folder. This lets us add `.htaccess` files with rules for redirecting special URLs. To allow overrides, create the file `/etc/apache2/conf-available/override.conf` with the following contents:
+First, you need to add a directory rule to allow `.htaccess` overrides within the `/var/www` folder. This lets you add `.htaccess` files with rules for redirecting special URLs. To allow overrides, create/edit the file `/etc/apache2/conf-available/override.conf` with this command:
+```bash
+sudo nano /etc/apache2/conf-available/override.conf
+```
+
+Add these lines:
 ```apache
 <Directory /var/www/>
     Options Indexes FollowSymLinks MultiViews
@@ -132,6 +137,8 @@ First, we need to add a directory rule to allow `.htaccess` overrides within the
     Allow from all
 </Directory>
 ```
+
+Save and exit (`CTRL-X`, 'Y').
 
 Then enable it with this command:
 ```bash
@@ -143,7 +150,12 @@ Now enable the rewrite module with this command:
 sudo a2enmod rewrite
 ```
 
-Now we can create rules to redirect special URLs. When you connect certain devices to WiFi, they issue http requests to determine whether internet access is available. We need to ensure that we handle these requests. To do so, create an `.htaccess` file in your web app's wsgi folder (`/var/www/rogueap/` if you're using the github repo's configuration) with these contents:
+Now you can create rules to redirect special URLs. When you connect certain devices to WiFi, they issue http requests to determine whether internet access is available. You need to ensure that we handle these requests. To do so, create an `.htaccess` file in your web app's wsgi folder. If you're using the github repo's configuration, the following command will work (if not, you'll need to specify the correct path to your app's wsgi folder):
+```bash
+sudo nano /var/www/rogueap/.htaccess
+```
+
+Add these lines to the file:
 ```apache
 Redirect /library/test/success.html /
 Redirect /hotspot-detect.html /
@@ -157,6 +169,201 @@ RewriteCond %{HTTP_USER_AGENT} ^CaptiveNetworkSupport(.*)$ [NC]
 RewriteRule ^(.*)$ / [L,R=301]
 ```
 
+Save and exit (`CTRL-X`, 'Y').
+
 That list came from Braindead Security's tutorial. It contains rules for the captive portal URLs that different device makers use (including one that relies on the user agent string), but it might not be a comprehensive list. The rules redirect requests to the root of the webapp (except `/generate_204`, which redirects to `/r/204`, which is configured to generate a 204 response).
 
-#### Configuring the Access Point
+#### Configure HostAPD to Create an Access Point
+You're going to lose internet access once you complete the rest of these steps, so it's worth ensuring that the web server and your web app are up and running first.
+
+Start by configuring HostAPD to create a wireless access point. Use this command to create/edit a HostAPD configuration file:
+```bash
+sudo nano /etc/hostapd/hostapd.conf
+```
+
+If you're starting with a stock Raspian image, this file will not already exist, so the above command will create a new, empty file. However, if the file does already exist, remove any existing content. Enter these lines:
+```text
+interface=wlan0
+bridge=br0
+ssid=[Your SSID]
+hw_mode=g
+channel=6
+wmm_enabled=0
+auth_algs=1
+```
+
+Replace "[Your SSID]" with the name of the access point you'd like to create. For example, if you'd like to create a network called "Angry Mule", you would use:
+```text
+ssid=Angry Mule
+```
+
+Save and exit (`CTRL-X`, 'Y').
+
+This configuration tells HostAPD to create an access point on `wlan0` using 802.11g hardware mode, channel 6, and no encryption/security. It also tells HostAPD to forward the traffic to a bridge interface named `br0.` HostAPD will create this bridge interface if it doesn't exist, but it doesn't give you a way to control the interface's configuration. So, you'll manually create and configure the bridge interface next.
+
+#### Enable HostAPD
+Use this command to edit the `/etc/default/hostapd` configuration file:
+```bash
+sudo nano /etc/default/hostapd
+```
+
+Look for this line:
+```text
+#DAEMON_CONF=""
+```
+
+Replace it with this:
+```text
+DAEMON_CONF="/etc/hostapd/hostapd.conf"
+```
+
+Save and exit (`CTRL-X`, 'Y'). The run this command:
+```bash
+sudo systemctl enable hostapd
+```
+
+This enables the HostAPD service using your configuration file at `/etc/hostapd/hostapd.conf`
+
+#### Create and Configure Bridge Interface `br0`
+You'll want to give the bridge interface, `br0`, a static IP address to make the rest of the configuration easier. While HostAPD can create the bridge interface for you, it doesn't give you control over its configuration. Therefore, you'll need to manually create the interface and configure it.
+
+Begin by editing your interfaces configuration file with this command:
+```bash
+sudo nano /etc/network/interfaces
+```
+
+Add the following lines to the end of the file:
+```text
+auto br0
+iface br0 inet static
+    address 10.1.1.1
+    netmask 255.255.255.0
+    pre-up brctl addbr br0
+    post-down btctl delbr br0
+```
+
+Save and exit (`CTRL-X`, 'Y').
+
+This manually creates the bridge interface `br0` with the static IP address 10.1.1.1. The `pre-up` and `post-down` commands use the bridge tools to add and remove the bridge interface when it is brought up or down, respectively.
+
+#### Enable IP Forwarding
+You'll need to configure the kernel to allow IP forwarding so that we can forward access point traffic to the bridge interface. To do this, edit the sysctl configuration file with this command:
+```bash
+sudo nano /etc/sysctl.conf
+```
+
+Look for the following line that's been disabled with a comment character:
+```text
+#net.ipv4.ip_forward=1
+```
+
+Remove the comment character ('#') so that it looks like this:
+```text
+net.ipv4.ip_forward=1
+```
+
+Save and exit (`CTRL-X`, 'Y').
+
+#### Configure iptables to Forward DNS and HTTP to `br0`
+You need to set up forwarding of DNS and HTTP traffic from the access point to the bridge interface. Begin by editing the `/etc/iptables/rules.v4` file with this command:
+```bash
+sudo nano /etc/iptables/rules.v4
+```
+
+Add these lines:
+```text
+*nat
+:PREROUTING ACCEPT [20:5816]
+:INPUT ACCEPT [20:5816]
+:OUTPUT ACCEPT [1:76]
+:POSTROUTING ACCEPT [0:0]
+-A PREROUTING -i br0 -p udp -m udp --dport 53 -j DNAT --to-destination 10.1.1.1:53
+-A PREROUTING -i br0 -p tcp -m tcp --dport 80 -j DNAT --to-destination 10.1.1.1:80
+-A PREROUTING -i br0 -p tcp -m tcp --dport 443 -j DNAT --to-destination 10.1.1.1:80
+-A POSTROUTING -j MASQUERADE
+COMMIT
+*filter
+:INPUT ACCEPT [572:92446]
+:FORWARD ACCEPT [0:0]
+:OUTPUT ACCEPT [203:20144]
+COMMIT
+```
+
+Save and exit (`CTRL-X`, 'Y').
+
+TODO: Explain
+
+#### Configure DNSmasq
+Next, you'll configure DNSmasq to handle DNS and DHCP for your access point. Begin editing the configuration file with this command:
+```bash
+sudo nano /etc/dnsmasq.conf
+```
+
+You can completely remove any existing file contents and replace them with this:
+```text
+interface=br0
+listen-address=10.1.1.1
+no-hosts
+dhcp-range=10.1.1.2,10.1.1.254,72h
+dhcp-option=option:router,10.1.1.1
+dhcp-authoritative
+
+address=/#/10.1.1.1
+```
+
+The first few lines tell DNSmasq to listen for traffic on the bridge interface `br0` and IP address 10.1.1.1. The DHCP lines allow the Raspberry Pi to hand out IP addresses to any devices that connect to its access point, and in turn they will treat the Raspberry Pi as their authoritative gateway to the internet. The "address" line redirects DNS traffic from all domains to the Raspberry Pi's IP address. This means that *any* domain name request made by connected clients will be directed to the Raspberry Pi's IP address. If--for example--a connected client tries to visit http://www.microsoft.com, they'll be directed to the Raspberry Pi's web server. Note that the only service we've set up thus far is http. So, if a client tries to telnet or ssh to www.microsoft.com, the request will time out and fail. Or, more importantly, if a client tries to visit https://www.microsoft.com, the request will time out and fail. You can configure Aapche to host an https server on the Raspberry Pi; however, because you (probably) can't spoof certificates for other websites, client web browsers will pop up big security warnings about invalid certificates and try hard to prevent users from proceeding to your rogue server. So, it's probably not worth the effort to bother with https (this is also another good reason to prefer https when you're surfing the web).
+
+#### Enable DNSmasq
+Use this command to edit the `/etc/default/dnsmasq` configuration file:
+```bash
+sudo nano /etc/default/dnsmasq
+```
+
+Look for this line:
+```text
+ENABLED=0
+```
+
+Replace it with this:
+```text
+ENABLED=1
+```
+
+Save and exit (`CTRL-X`, 'Y'). Then run this command:
+```bash
+systemctl enable dnsmasq
+```
+
+This ensures that the DNSmasq service is enabled.
+
+#### Disable dhcpcd 
+You're going to use DNSmasq for both DNS and DHCP, so disable the dhcpcd service that's enabled by default on the Raspberry Pi. Use this command:
+```bash
+sudo update-rc.d dhcpcd disable
+```
+
+#### Disable WPA Supplicant
+Edit the WPA Supplicant configuration file with this command:
+```bash
+sudo nano /etc/wpa_supplicant/wpa_supplicant.conf
+```
+
+Remove or comment out the entire `network` section you previously added:
+```text
+#network={
+#    ssid="WiFi Network"
+#    psk="password"
+#}
+```
+
+Save and exit (`CTRL-X`, 'Y').
+
+#### Reboot and Test
+Reboot the Raspberry Pi with this command
+```bash
+sudo reboot
+```
+
+Once the Raspberry Pi boots, you should be able to see and connect to an unsecured access point with the name you selected. Once connected, if you go to an http website (try something like http://moo.com), you should be redirected to your web app.
+
+Have fun!
