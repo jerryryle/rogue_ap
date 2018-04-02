@@ -14,26 +14,26 @@ read SSID
 echo "Enter WiFi Password:"
 read PSK
 
-echo -n "Copying config files..."
+echo "Copying config files..."
 cp -f ${SCRIPT_DIR}/cfg/interfaces.wifi /etc/network/interfaces
 cp -f ${SCRIPT_DIR}/cfg/rules.v4.wifi /etc/iptables/rules.v4
 echo "done!"
 
-echo -n "Modifying config files..."
+echo "Modifying config files..."
 sed -i -- 's/net.ipv4.ip_forward=1/#net.ipv4.ip_forward=1/g' /etc/sysctl.conf
 sed -i -- 's/DAEMON_CONF="\/etc\/hostapd\/hostapd.conf"/#DAEMON_CONF=""/g' /etc/default/hostapd
 sed -i -- 's/ENABLED=1/ENABLED=0/g' /etc/default/dnsmasq
 echo "done!"
 
-echo -n "Enable DHCP..."
+echo "Enable DHCP..."
 update-rc.d dhcpcd enable
 echo "done!"
 
-echo -n "Disable dnsmasq..."
+echo "Disable dnsmasq..."
 systemctl disable dnsmasq
 echo "done!"
 
-echo -n "Disable hostapd..."
+echo "Disable hostapd..."
 systemctl disable dnsmasq
 echo "done!"
 

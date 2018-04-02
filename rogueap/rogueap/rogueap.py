@@ -1,16 +1,17 @@
 from flask import escape, Flask, g, jsonify, render_template, request
 
-app = Flask(__name__, static_folder='static', template_folder='templates')
+app = Flask(__name__, static_folder='static', static_url_path='/r/static', template_folder='templates')
 app.config.from_object(__name__)
 
 
-@app.route("/")
+@app.route("/", endpoint='index')
+@app.route("/r", endpoint='r')
 def index():
     return render_template('index.html')
 
 
-@app.route("/generate_204")
-def generate_204():
+@app.route("/r/204")
+def r_204():
     return '', 204
 
 

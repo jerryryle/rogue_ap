@@ -1,6 +1,6 @@
 # Building a Rogue AP with the Raspberry Pi Zero W
 
-I embarked upon configuring a Raspberry Pi Zero W to act as a WiFi hotspot and serve up a little Python web app to anyone who connected to it. In researching the topic, I came across this posting from Braindead Security: [Building a Rogue Captive Portal for Raspberry Pi Zero W](https://braindead-security.blogspot.com/2017/06/building-rogue-captive-portal-for.html)
+I embarked upon a journey of configuration to get a Raspberry Pi Zero W to act as a WiFi hotspot and serve up a little Python web app to anyone who connected to it. In researching the topic, I came across this posting from Braindead Security: [Building a Rogue Captive Portal for Raspberry Pi Zero W](https://braindead-security.blogspot.com/2017/06/building-rogue-captive-portal-for.html)
 
 It was almost exactly what I wanted, except for a few things:
 
@@ -8,11 +8,11 @@ It was almost exactly what I wanted, except for a few things:
 2. It set up the system for PHP. I wanted to use Python with Flask and WSGI.
 3. It used a hackish startup script in /etc/rc.local. I wanted to figure out how to set up all of the services properly through their respective configuration files instead of brute-forcing it.
 
-So, I've borrowed heavily from Braindead's tutorial, but I've updated it to achieve my goals.
+So, I've borrowed heavily from Braindead's tutorial, but I've updated it to achieve my goals. Unlike Braindead's tutorial, this one will not comprehensively cover everything needed to get a functioning Rogue AP set up to steal login credentials. I focus more on the Raspian configuration required to create an access point and have it direct all traffic to a web app. I don't bother to illustrate how to write an app that does anything interesting.
 
 ## TL;DR
 
-On a fresh install of Raspbian Stretch Lite, clone [https://github.com/jerryryle/rogue_ap](https://github.com/jerryryle/rogue_ap) and run setup.sh, then reboot. The Pi needs only a power supply and a wireless adapter on wlan0; internet connection is not required.
+On a fresh install of Raspbian Stretch Lite, clone [https://github.com/jerryryle/rogue_ap](https://github.com/jerryryle/rogue_ap) and run setup.sh, then reboot. The Pi needs only a power supply and a wireless adapter on wlan0; an internet connection is not required.
 
 ## Components
 
@@ -98,7 +98,7 @@ sudo ./setup.sh
 sudo reboot
 ```
 
-Once you do this, you will lose internet access since you have converted the Raspberry Pi's wireless hardware from a WiFi client to an Access Point.
+Once you do this, your Raspberry Pi will lose internet access since you have converted its wireless hardware from a WiFi client to an Access Point.
 
 If you need to restore WiFi so that you can access the internet from your Raspberry Pi, you can use the `restore_wifi.sh` script to disable the Rogue AP and reconnect to your WiFi network. To do this, run these commands (you will be prompted for your WiFi SSID and password):
 ```bash
@@ -108,4 +108,55 @@ sudo reboot
 ```
 
 ### The Manual Way
-Coming soon.
+
+#### Configuring the Web Server to Run an App
+First, you'll want to install your web application and get it running under Apache. The github repo associated with this project contains a skeleton Flask-based app that's intended to run under Apache. You can clone the repo and use it or build your own app. If you want to use a different framework, language, or web server, the configuration is up to you and you can skip over this section.
+
+To install a Flask-based app, switch to the app's folder ("rogueap" in the github repo) and run this command:
+```bash
+pip install --upgrade --no-deps --force-reinstall .
+```
+
+The `--upgrade --no-deps --force-reinstall` flags ensure that the app is upgraded to any newer version if it's already reinstalled, that its dependencies are not reinstalled, and that the app will be reinstalled if it's already installed and there's no newer version. This attempts to guarantee that any changes to your app get installed whenever you run this command.
+
+To configure Apache to run the installed Flask app, follow these instructions: [http://flask.pocoo.org/docs/0.12/deploying/mod_wsgi/](http://flask.pocoo.org/docs/0.12/deploying/mod_wsgi/). In a nutshell, you need to create a `.wsgi` file that imports your installed app and change your Apache site's `VirtualHost` configuration to run it. The linked instructions should walk you through all of this, but you can also inspect the files in this project's github repo to see how I configured it.
+
+#### Configuring the Web Server to Fool Captive Portal Detection
+
+First, we need to add a directory rule to allow `.htaccess` overrides within the `/var/www` folder. This lets us add `.htaccess` files with rules for redirecting special URLs. To allow overrides, create the file `/etc/apache2/conf-available/override.conf` with the following contents:
+```apache
+<Directory /var/www/>
+    Options Indexes FollowSymLinks MultiViews
+    AllowOverride All
+    Order Allow,Deny
+    Allow from all
+</Directory>
+```
+
+Then enable it with this command:
+```bash
+sudo a2enconf override
+```
+
+Now enable the rewrite module with this command:
+```bash
+sudo a2enmod rewrite
+```
+
+Now we can create rules to redirect special URLs. When you connect certain devices to WiFi, they issue http requests to determine whether internet access is available. We need to ensure that we handle these requests. To do so, create an `.htaccess` file in your web app's wsgi folder (`/var/www/rogueap/` if you're using the github repo's configuration) with these contents:
+```apache
+Redirect /library/test/success.html /
+Redirect /hotspot-detect.html /
+Redirect /ncsi.txt /
+Redirect /connecttest.txt /
+Redirect /fwlink/ /
+Redirect /generate_204 /r/204
+
+RewriteEngine on
+RewriteCond %{HTTP_USER_AGENT} ^CaptiveNetworkSupport(.*)$ [NC]
+RewriteRule ^(.*)$ / [L,R=301]
+```
+
+That list came from Braindead Security's tutorial. It contains rules for the captive portal URLs that different device makers use (including one that relies on the user agent string), but it might not be a comprehensive list. The rules redirect requests to the root of the webapp (except `/generate_204`, which redirects to `/r/204`, which is configured to generate a 204 response).
+
+#### Configuring the Access Point

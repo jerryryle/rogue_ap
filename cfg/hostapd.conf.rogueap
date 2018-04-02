@@ -1,6 +1,6 @@
 interface=wlan0
 bridge=br0
-ssid=<Your SSID Here>
+ssid=[Your SSID]
 hw_mode=g
 channel=6
 wmm_enabled=0
