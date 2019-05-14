@@ -12,7 +12,7 @@ So, I've borrowed heavily from Braindead's tutorial, but I've updated it to achi
 
 ## TL;DR
 
-On a fresh install of Raspbian Stretch Lite, clone [https://github.com/jerryryle/rogue_ap](https://github.com/jerryryle/rogue_ap) and run setup.sh, then reboot. The Pi needs only a power supply and a wireless adapter on wlan0; an internet connection is not required.
+On a fresh install of Raspbian Stretch Lite, clone [https://github.com/jerryryle/rogue_ap](https://github.com/jerryryle/rogue_ap) and run `setup.sh`, then reboot. The Pi needs only a power supply and a wireless adapter on wlan0; an internet connection is not required.
 
 ## Components
 
@@ -174,7 +174,7 @@ Save and exit (`CTRL-X`, 'Y').
 That list came from Braindead Security's tutorial. It contains rules for the captive portal URLs that different device makers use (including one that relies on the user agent string), but it might not be a comprehensive list. The rules redirect requests to the root of the webapp (except `/generate_204`, which redirects to `/r/204`, which is configured to generate a 204 response).
 
 #### Configure HostAPD to Create an Access Point
-You're going to lose internet access once you complete the rest of these steps, so it's worth ensuring that the web server and your web app are up and running first.
+Your Raspberry Pi will lose internet access once you complete the rest of these steps, so it's worth ensuring that the web server and your web app are up and running first.
 
 Start by configuring HostAPD to create a wireless access point. Use this command to create/edit a HostAPD configuration file:
 ```bash
@@ -273,9 +273,9 @@ sudo nano /etc/iptables/rules.v4
 Add these lines:
 ```text
 *nat
-:PREROUTING ACCEPT [20:5816]
-:INPUT ACCEPT [20:5816]
-:OUTPUT ACCEPT [1:76]
+:PREROUTING ACCEPT [0:0]
+:INPUT ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
 :POSTROUTING ACCEPT [0:0]
 -A PREROUTING -i br0 -p udp -m udp --dport 53 -j DNAT --to-destination 10.1.1.1:53
 -A PREROUTING -i br0 -p tcp -m tcp --dport 80 -j DNAT --to-destination 10.1.1.1:80
@@ -283,9 +283,9 @@ Add these lines:
 -A POSTROUTING -j MASQUERADE
 COMMIT
 *filter
-:INPUT ACCEPT [572:92446]
+:INPUT ACCEPT [0:0]
 :FORWARD ACCEPT [0:0]
-:OUTPUT ACCEPT [203:20144]
+:OUTPUT ACCEPT [0:0]
 COMMIT
 ```
 
