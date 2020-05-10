@@ -39,8 +39,8 @@ copy_with_backup () {
 	# If the destination file exists, back it up--but only if the backup file does not already exist
 	if [ -f $2 ] && [ ! -f $2.rogueap-old ]; then
 		mv -f ${2} ${2}.rogueap-old
-		cp -f ${1} ${2}
 	fi
+	cp -f ${1} ${2}
 }
 
 echo "Copying config files..."
