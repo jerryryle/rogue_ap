@@ -53,7 +53,7 @@ copy_with_backup ${SCRIPT_DIR}/cfg/rules.v4.rogueap /etc/iptables/rules.v4
 echo "done!"
 
 echo "Modifying config files..."
-sed -i -- 's/^ssid=.*$/ssid=${SSID}/g' /etc/hostapd/hostapd.conf
+sed -i -- "s/^ssid=.*$/ssid=${SSID}/g" /etc/hostapd/hostapd.conf
 sed -i -- 's/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/g' /etc/sysctl.conf
 sed -i -- 's/#DAEMON_CONF=""/DAEMON_CONF="\/etc\/hostapd\/hostapd.conf"/g' /etc/default/hostapd
 sed -i -- 's/ENABLED=0/ENABLED=1/g' /etc/default/dnsmasq
