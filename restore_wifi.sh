@@ -8,14 +8,14 @@ fi
 # Get the script folder
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-echo "Enter WiFi SSID:"
+echo "Enter SSID of WiFi network to which to connect:"
 read SSID
 
 echo "Enter WiFi Password:"
 read PSK
 
 echo "Copying config files..."
-cp -f ${SCRIPT_DIR}/cfg/interfaces.wifi /etc/network/interfaces
+rm -f ${SCRIPT_DIR}/cfg/interfaces.d/br0
 cp -f ${SCRIPT_DIR}/cfg/rules.v4.wifi /etc/iptables/rules.v4
 echo "done!"
 
@@ -34,7 +34,8 @@ systemctl disable dnsmasq
 echo "done!"
 
 echo "Disable hostapd..."
-systemctl disable dnsmasq
+systemctl disable hostapd
+systemctl mask hostapd
 echo "done!"
 
 cat > /etc/wpa_supplicant/wpa_supplicant.conf <<EOF

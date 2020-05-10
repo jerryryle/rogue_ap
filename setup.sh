@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 
-PREREQUISITES="apache2 bridge-utils dnsmasq git hostapd iptables-persistent libapache2-mod-wsgi macchanger python-pip python-flask"
+PREREQUISITES="apache2 libapache2-mod-wsgi bridge-utils dnsmasq git hostapd iptables-persistent libapache2-mod-wsgi macchanger python-pip python-flask"
 
 if [ "$(id -u)" != "0" ]; then
 	echo "This must be run as root." 1>&2
@@ -29,7 +29,7 @@ if [ "${MISSING_PACKAGES}" == "1" ]; then
 	exit 1
 fi
 
-echo "Enter SSID for Rogue Access Point:"
+echo "Enter the SSID you would like to use for the Rogue Access Point:"
 read SSID
 
 # Get the script folder
@@ -47,7 +47,7 @@ echo "Copying config files..."
 copy_with_backup ${SCRIPT_DIR}/cfg/htaccess.rogueap /var/www/html/.htaccess
 copy_with_backup ${SCRIPT_DIR}/cfg/dnsmasq.conf.rogueap /etc/dnsmasq.conf
 copy_with_backup ${SCRIPT_DIR}/cfg/hostapd.conf.rogueap /etc/hostapd/hostapd.conf
-copy_with_backup ${SCRIPT_DIR}/cfg/interfaces.rogueap /etc/network/interfaces
+copy_with_backup ${SCRIPT_DIR}/cfg/br0.rogueap /etc/network/interfaces.d/br0
 copy_with_backup ${SCRIPT_DIR}/cfg/override.conf.rogueap /etc/apache2/conf-available/override.conf
 copy_with_backup ${SCRIPT_DIR}/cfg/rules.v4.rogueap /etc/iptables/rules.v4
 echo "done!"
@@ -55,7 +55,6 @@ echo "done!"
 echo "Modifying config files..."
 sed -i -- "s/^ssid=.*$/ssid=${SSID}/g" /etc/hostapd/hostapd.conf
 sed -i -- 's/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/g' /etc/sysctl.conf
-sed -i -- 's/#DAEMON_CONF=""/DAEMON_CONF="\/etc\/hostapd\/hostapd.conf"/g' /etc/default/hostapd
 sed -i -- 's/ENABLED=0/ENABLED=1/g' /etc/default/dnsmasq
 echo "done!"
 
@@ -85,6 +84,7 @@ systemctl enable dnsmasq
 echo "done!"
 
 echo "Enabling hostapd..."
+systemctl unmask hostapd
 systemctl enable hostapd
 echo "done!"
 
