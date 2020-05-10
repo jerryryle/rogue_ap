@@ -2,28 +2,28 @@
 title: "Rogue AP using a Raspberry Pi Zero W"
 ---
 # Building a Rogue AP with the Raspberry Pi Zero W
-April 1, 2018
+May 9, 2020 - Updated for Raspbian Buster
 
 I embarked upon a journey of configuration to get a Raspberry Pi Zero W to act as a WiFi hotspot and serve up a little Python web app to anyone who connected to it. In researching the topic, I came across this posting from Braindead Security: [Building a Rogue Captive Portal for Raspberry Pi Zero W](https://braindead-security.blogspot.com/2017/06/building-rogue-captive-portal-for.html)
 
 It was almost exactly what I wanted, except for a few things:
 
-1. It was written for Raspbian Jessie Lite. I wanted to use the latest Raspbian Stretch Lite.
+1. It was written for Raspbian Jessie Lite. I wanted to use a newer version of Raspbian.
 2. It set up the system for PHP. I wanted to use Python with Flask and WSGI.
-3. It used a hackish startup script in /etc/rc.local. I wanted to figure out how to set up all of the services properly through their respective configuration files instead of brute-forcing it.
+3. It used a hackish startup script in /etc/rc.local. I wanted to figure out how to set up all of the services properly through their respective configuration files instead of brute-forcing it. I also wanted to understand and document what each configuration step did.
 
-So, I've borrowed heavily from Braindead's tutorial, but I've updated it to achieve my goals. Unlike Braindead's tutorial, this one will not comprehensively cover everything needed to get a functioning Rogue AP set up to steal login credentials. I focus more on the Raspian configuration required to create an access point and have it direct all traffic to a web app. I don't bother to illustrate how to write an app that does anything interesting.
+So, I've borrowed heavily from Braindead's tutorial, but I've updated it to achieve my goals. Unlike Braindead's tutorial, this one will not comprehensively cover everything needed to get a functioning Rogue AP set up to steal login credentials. I focus more on the Raspian configuration required to create an access point and have it direct all traffic to a Python WSGI web app. I don't bother to illustrate how to write an app that does anything interesting.
 
 ## TL;DR
 
-On a fresh install of Raspbian Stretch Lite, clone [https://github.com/jerryryle/rogue_ap](https://github.com/jerryryle/rogue_ap) and run `setup.sh`, then reboot. The Pi needs only a power supply and a wireless adapter on wlan0; an internet connection is not required.
+On a fresh install of Raspbian Buster Lite, run through the Preparation section below. Then clone [https://github.com/jerryryle/rogue_ap](https://github.com/jerryryle/rogue_ap) and run `setup.sh`, then reboot. The Pi needs only a power supply, a wireless adapter on wlan0, and an internet connection.
 
 ## Components
 
 You will need the following:
 
 * Raspberry Pi Zero W - though any Raspberry Pi model should work as long as it has a wireless adapter (built in or connected via USB)
-* Micro SD card - I'd recommend at least a 4GB class 10 card
+* Micro SD card - Use at least a 4GB class 10 card
 * HDMI cable and HDMI-compatible monitor or TV
 * USB OTG cable and 2A AC adapter for power
 * Keyboard and micro USB adapter or powered USB hub
@@ -33,9 +33,10 @@ You will need the following:
 
 ## Preparation
 
-First, you need to get the Raspberry Pi up and running. Download the latest image of Raspbian Stretch Lite from [https://www.raspberrypi.org/downloads/raspbian/](https://www.raspberrypi.org/downloads/raspbian/)
+First, you need to get the Raspberry Pi up and running with the required packages. Download the latest image of Raspbian Buster Lite from [https://www.raspberrypi.org/downloads/raspbian/](https://www.raspberrypi.org/downloads/raspbian/)
 
-For writing the image to your SD card, Braindead recommends simplifying the process by using Etcher from [https://etcher.io](https://etcher.io).
+### Create a Raspbian SD Card
+For writing the image to your SD card, get Etcher from [https://www.balena.io/etcher/](https://www.balena.io/etcher/).
 
 Insert the SD card in your computer and use Etcher to copy the Raspbian image to the SD card (it will overwrite any data currently on the card).
 
@@ -43,7 +44,10 @@ Insert the SD card in your computer and use Etcher to copy the Raspbian image to
 
 When Etcher has finished copying the image, remove the SD card from your computer, plug it into the Raspberry Pi, connect a keyboard and monitor, and plug in the AC adapter. The system should boot to a login prompt. Log in using the default username `pi` and password `raspberry`.
 
-In order to configure the device, you'll need to configure the Raspberry Pi to connect to your WiFi network. Type this command to edit the wireless configuration:
+### Set up a WiFi connection for internet access
+In order to configure the device, you'll need to configure the Raspberry Pi to connect to your WiFi network. You can either run `sudo raspi-config` and configure your network from the GUI or do it manually with the following steps.
+
+Type this command to edit the wireless configuration:
 ```bash
 sudo nano /etc/wpa_supplicant/wpa_supplicant.conf
 ```
@@ -61,22 +65,34 @@ To save the file and exit, type `Ctrl-X`, then `y`, then `Enter`. Then, enter th
 sudo service networking restart
 ```
 
+At this point, you might wish to enable ssh and perform as much of the the remaining configuration as possible over ssh. Setting this up is outside the scope of this document, but check out the "Interfacing Options" menu in the configuration tool invoked with `sudo raspi-config`.
+
+### Update Raspbian
 Next, update the system with the following command:
 ```bash
 sudo apt-get update && sudo apt-get dist-upgrade -y
 ```
 
+### Install additional dependencies
 After the system has updated, install the additional required packages:
 ```bash
-sudo apt-get install apache2 bridge-utils dnsmasq git hostapd iptables-persistent libapache2-mod-wsgi macchanger python-pip python-flask
+sudo apt-get install apache2 libapache2-mod-wsgi bridge-utils dnsmasq git hostapd iptables-persistent libapache2-mod-wsgi macchanger python-pip python-flask
 ```
 
+During the installation of the `iptables-persistent` package, you will be asked whether you'd like to save the current iptables rules. It will prompt you separately for both IPv4 and IPv6 rules. For each prompt, select 'Yes' with the arrow keys and press `Enter`:
+
+![iptables-persistent installation prompt IPv4](iptables-persistent-01.png)
+
+![iptables-persistent installation prompt IPv6](iptables-persistent-02.png)
+
 During the installation of the `macchanger` package, you will be asked whether you'd like `macchanger` to run automatically. Select 'Yes' with the arrow keys and press `Enter`:
+
 ![macchanger installation prompt](macchanger.png)
 
 Here's what you're installing and why:
 
 * **apache2** - This is the web server that will serve up your content
+* **libapache2-mod-wsgi** - This allows you to run your python app as a web app using a Web Server Gateway Interface interface to Apache.
 * **bridge-utils** - Utilities for creating network bridge interfaces. Although hostapd can create the bridge interface for you, it doesn't give you control over the IP address of the interface. Because you need to fix the bridge's IP address, you have to create and configure the interface manually with the tools in this package.
 * **dnsmasq** - This provides DNS and DHCP services. You'll configure this to hijack all DNS requests and give responses that direct browsers to your web server.
 * **git** - This is needed to clone the repository that contains setup scripts and configuration files. (If you're planning to do all of the setup by hand, you don't need this)
@@ -121,7 +137,7 @@ To install a Flask-based app, switch to the app's folder ("rogueap" in the githu
 pip install --upgrade --no-deps --force-reinstall .
 ```
 
-The `--upgrade --no-deps --force-reinstall` flags ensure that the app is upgraded to any newer version if it's already reinstalled, that its dependencies are not reinstalled, and that the app will be reinstalled if it's already installed and there's no newer version. This attempts to guarantee that any changes to your app get installed whenever you run this command.
+The `--upgrade --no-deps --force-reinstall` flags ensure that the app is upgraded to any newer version if it's already installed, that its dependencies are not reinstalled, and that the app will be reinstalled even if it's already installed and there's no newer version. This attempts to guarantee that any changes to your app get installed whenever you run this command.
 
 To configure Apache to run the installed Flask app, follow these instructions: [http://flask.pocoo.org/docs/0.12/deploying/mod_wsgi/](http://flask.pocoo.org/docs/0.12/deploying/mod_wsgi/). In a nutshell, you need to create a `.wsgi` file that imports your installed app and change your Apache site's `VirtualHost` configuration to run it. The linked instructions should walk you through all of this, but you can also inspect the files in this project's github repo to see how I configured it.
 
@@ -152,6 +168,11 @@ sudo a2enconf override
 Now enable the rewrite module with this command:
 ```bash
 sudo a2enmod rewrite
+```
+
+Restart Apache to activate the new configuration with this command:
+```bash
+sudo systemctl restart apache2
 ```
 
 Now you can create rules to redirect special URLs. When you connect certain devices to WiFi, they issue http requests to determine whether internet access is available. You need to ensure that we handle these requests. To do so, create an `.htaccess` file in your web app's wsgi folder. If you're using the github repo's configuration, the following command will work (if not, you'll need to specify the correct path to your app's wsgi folder):
@@ -221,8 +242,9 @@ Replace it with this:
 DAEMON_CONF="/etc/hostapd/hostapd.conf"
 ```
 
-Save and exit (`CTRL-X`, 'Y'). The run this command:
+Save and exit (`CTRL-X`, 'Y'). Then run these commands:
 ```bash
+sudo systemctl unmask hostapd
 sudo systemctl enable hostapd
 ```
 
@@ -231,12 +253,12 @@ This enables the HostAPD service using your configuration file at `/etc/hostapd/
 #### Create and Configure Bridge Interface `br0`
 You'll want to give the bridge interface, `br0`, a static IP address to make the rest of the configuration easier. While HostAPD can create the bridge interface for you, it doesn't give you control over its configuration. Therefore, you'll need to manually create the interface and configure it.
 
-Begin by editing your interfaces configuration file with this command:
+Begin by creating a new br0 interface configuration file with this command:
 ```bash
-sudo nano /etc/network/interfaces
+sudo nano /etc/network/interfaces.d/br0
 ```
 
-Add the following lines to the end of the file:
+Add the following lines to the file:
 ```text
 auto br0
 iface br0 inet static
@@ -274,7 +296,7 @@ You need to set up forwarding of DNS and HTTP traffic from the access point to t
 sudo nano /etc/iptables/rules.v4
 ```
 
-Add these lines:
+Replace any existing content with this:
 ```text
 *nat
 :PREROUTING ACCEPT [0:0]
@@ -323,7 +345,7 @@ Use this command to edit the `/etc/default/dnsmasq` configuration file:
 sudo nano /etc/default/dnsmasq
 ```
 
-Look for this line:
+Look for this line (note: it might already be set to `ENABLED=1`):
 ```text
 ENABLED=0
 ```
@@ -335,7 +357,7 @@ ENABLED=1
 
 Save and exit (`CTRL-X`, 'Y'). Then run this command:
 ```bash
-systemctl enable dnsmasq
+sudo systemctl enable dnsmasq
 ```
 
 This ensures that the DNSmasq service is enabled.
