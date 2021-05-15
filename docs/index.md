@@ -2,6 +2,9 @@
 title: "Rogue AP using a Raspberry Pi Zero W"
 ---
 # Building a Rogue AP with the Raspberry Pi Zero W
+
+Please see the newer [Rogue Portal](https://jerryryle.github.io/rogueportal) project for more recent work.
+
 May 9, 2020 - Updated for Raspbian Buster
 
 I embarked upon a journey of configuration to get a Raspberry Pi Zero W to act as a WiFi hotspot and serve up a little Python web app to anyone who connected to it. In researching the topic, I came across this posting from Braindead Security: [Building a Rogue Captive Portal for Raspberry Pi Zero W](https://braindead-security.blogspot.com/2017/06/building-rogue-captive-portal-for.html)
